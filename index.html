@@ -1,0 +1,1042 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#0B0B0E" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>Horizon — Graduation Countdown Lock Screen & Wallpaper</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg-oled: #0B0B0E;
+      --surface: rgba(255, 255, 255, 0.03);
+      --surface-border: rgba(255, 255, 255, 0.08);
+      --text-primary: #F4F4F6;
+      --text-secondary: #8E929F;
+      --text-muted: #525665;
+      --accent-primary: #38BDF8;
+      --accent-secondary: #F59E0B;
+      --glow-primary: rgba(56, 189, 248, 0.14);
+      --glow-secondary: rgba(245, 158, 11, 0.10);
+      --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+    }
+
+    body[data-theme="gold"] {
+      --accent-primary: #FBBF24;
+      --accent-secondary: #FB7185;
+      --glow-primary: rgba(251, 191, 36, 0.14);
+      --glow-secondary: rgba(251, 113, 133, 0.09);
+    }
+
+    body[data-theme="emerald"] {
+      --accent-primary: #34D399;
+      --accent-secondary: #38BDF8;
+      --glow-primary: rgba(52, 211, 153, 0.14);
+      --glow-secondary: rgba(56, 189, 248, 0.09);
+    }
+
+    body[data-theme="violet"] {
+      --accent-primary: #A78BFA;
+      --accent-secondary: #38BDF8;
+      --glow-primary: rgba(167, 139, 250, 0.15);
+      --glow-secondary: rgba(56, 189, 248, 0.10);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      height: 100%;
+      min-height: 100dvh;
+      background-color: var(--bg-oled);
+      color: var(--text-primary);
+      font-family: var(--font-sans);
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    /* Ambient Radial Glow strictly anchored in the lower focal region */
+    .ambient-glow {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      background:
+        radial-gradient(circle at 32% 68%, var(--glow-primary) 0%, transparent 45%),
+        radial-gradient(circle at 70% 76%, var(--glow-secondary) 0%, transparent 48%);
+      transition: background 0.6s ease;
+    }
+
+    /* Subtle noise overlay for OLED banding prevention */
+    .grain-overlay {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 1;
+      opacity: 0.025;
+      background-image: radial-gradient(#ffffff 0.5px, transparent 0.5px);
+      background-size: 24px 24px;
+    }
+
+    /* Main Lock Screen Layout: Top 25% Reserved Safe Zone */
+    .wallpaper-canvas {
+      position: relative;
+      z-index: 2;
+      min-height: 100dvh;
+      width: 100%;
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 25dvh clamp(1.25rem, 4vw, 3rem) max(2.25rem, env(safe-area-inset-bottom));
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1.75rem;
+    }
+
+    /* Optional System Clock Safe-Zone Preview Overlay */
+    .safe-zone-guide {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 25dvh;
+      z-index: 5;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      border-bottom: 1px dashed rgba(255, 255, 255, 0.14);
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.02) 0%, transparent 100%);
+      pointer-events: none;
+      user-select: none;
+    }
+
+    body.show-guide .safe-zone-guide {
+      display: flex;
+    }
+
+    .mock-date {
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: rgba(255, 255, 255, 0.45);
+      letter-spacing: 0.02em;
+    }
+
+    .mock-clock {
+      font-size: clamp(3rem, 8vw, 4.5rem);
+      font-weight: 700;
+      line-height: 1;
+      color: rgba(255, 255, 255, 0.32);
+      letter-spacing: -0.04em;
+      font-variant-numeric: tabular-nums;
+      margin-top: 0.15rem;
+    }
+
+    .mock-badge {
+      margin-top: 0.4rem;
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.16em;
+      color: var(--accent-primary);
+      opacity: 0.7;
+    }
+
+    /* Header Eyebrow */
+    .header-meta {
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.45rem;
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      padding: 0.3rem 0.85rem;
+      border-radius: 999px;
+      background: var(--surface);
+      border: 1px solid var(--surface-border);
+      font-size: 0.72rem;
+      font-weight: 500;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--text-secondary);
+      backdrop-filter: blur(12px);
+    }
+
+    .pulse-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--accent-primary);
+      box-shadow: 0 0 8px var(--accent-primary);
+      animation: pulse 2.6s infinite ease-in-out;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 0.45; transform: scale(0.92); }
+      50% { opacity: 1; transform: scale(1.15); }
+    }
+
+    .degree-title {
+      font-size: clamp(0.95rem, 2vw, 1.15rem);
+      font-weight: 400;
+      color: var(--text-secondary);
+      letter-spacing: 0.02em;
+    }
+
+    /* Core Countdown Cluster */
+    .countdown-section {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1.5rem;
+    }
+
+    .countdown-grid {
+      display: flex;
+      align-items: baseline;
+      justify-content: center;
+      gap: clamp(1rem, 4vw, 2.75rem);
+    }
+
+    .time-block {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-width: clamp(72px, 18vw, 128px);
+    }
+
+    .time-block.seconds-block {
+      display: none;
+    }
+
+    body.show-seconds .time-block.seconds-block {
+      display: flex;
+    }
+
+    .time-value {
+      font-size: clamp(3.15rem, 11vw, 5.75rem);
+      font-weight: 600;
+      line-height: 0.95;
+      letter-spacing: -0.04em;
+      font-variant-numeric: tabular-nums;
+      background: linear-gradient(180deg, #FFFFFF 35%, rgba(255, 255, 255, 0.68) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .time-block:first-child .time-value {
+      background: linear-gradient(160deg, #FFFFFF 30%, var(--accent-primary) 130%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .time-label {
+      margin-top: 0.5rem;
+      font-size: 0.7rem;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+      color: var(--text-muted);
+    }
+
+    .time-divider {
+      font-size: clamp(2rem, 6vw, 3.25rem);
+      font-weight: 300;
+      color: rgba(255, 255, 255, 0.16);
+      transform: translateY(-0.55rem);
+      user-select: none;
+    }
+
+    .time-divider.seconds-divider {
+      display: none;
+    }
+
+    body.show-seconds .time-divider.seconds-divider {
+      display: block;
+    }
+
+    /* Semester Progress Bar */
+    .progress-card {
+      width: 100%;
+      max-width: 560px;
+      display: flex;
+      flex-direction: column;
+      gap: 0.55rem;
+    }
+
+    .progress-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      letter-spacing: 0.04em;
+    }
+
+    .progress-percent {
+      font-variant-numeric: tabular-nums;
+      font-weight: 600;
+      color: var(--accent-primary);
+    }
+
+    .progress-track {
+      width: 100%;
+      height: 5px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.06);
+      overflow: hidden;
+      position: relative;
+    }
+
+    .progress-fill {
+      height: 100%;
+      width: 0%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary));
+      box-shadow: 0 0 14px var(--glow-primary);
+      transition: width 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+
+    /* 4-Stage Milestone Timeline */
+    .timeline-container {
+      width: 100%;
+      max-width: 680px;
+      background: var(--surface);
+      border: 1px solid var(--surface-border);
+      border-radius: 20px;
+      padding: 1.25rem 1.35rem;
+      backdrop-filter: blur(16px);
+    }
+
+    .timeline-steps {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0.75rem;
+      position: relative;
+    }
+
+    /* Horizontal connector line on desktop/tablet */
+    .timeline-steps::before {
+      content: '';
+      position: absolute;
+      top: 11px;
+      left: 12.5%;
+      right: 12.5%;
+      height: 1.5px;
+      background: rgba(255, 255, 255, 0.08);
+      z-index: 0;
+    }
+
+    .milestone-item {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      cursor: pointer;
+      padding: 0.15rem;
+      border-radius: 12px;
+      transition: transform 0.2s ease, opacity 0.2s ease;
+    }
+
+    .milestone-item:hover {
+      transform: translateY(-2px);
+    }
+
+    .milestone-node {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: var(--bg-oled);
+      border: 2px solid rgba(255, 255, 255, 0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 0.6rem;
+      transition: all 0.3s ease;
+    }
+
+    .milestone-item.completed .milestone-node {
+      background: var(--accent-primary);
+      border-color: var(--accent-primary);
+      box-shadow: 0 0 12px var(--glow-primary);
+    }
+
+    .milestone-item.completed .milestone-node::after {
+      content: '✓';
+      font-size: 0.68rem;
+      font-weight: 700;
+      color: #0B0B0E;
+    }
+
+    .milestone-item.active .milestone-node {
+      border-color: var(--accent-secondary);
+      box-shadow: 0 0 14px var(--glow-secondary);
+    }
+
+    .milestone-item.active .milestone-node::after {
+      content: '';
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--accent-secondary);
+    }
+
+    .milestone-title {
+      font-size: 0.78rem;
+      font-weight: 500;
+      color: var(--text-primary);
+      line-height: 1.3;
+    }
+
+    .milestone-item.completed .milestone-title {
+      color: var(--text-secondary);
+    }
+
+    .milestone-date {
+      margin-top: 0.2rem;
+      font-size: 0.66rem;
+      color: var(--text-muted);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .milestone-item.active .milestone-date {
+      color: var(--accent-secondary);
+    }
+
+    /* Motivational Micro-Quote Footer */
+    .quote-footer {
+      text-align: center;
+      max-width: 480px;
+      padding: 0 0.5rem;
+      cursor: pointer;
+    }
+
+    .quote-text {
+      font-size: 0.84rem;
+      font-weight: 400;
+      font-style: italic;
+      color: var(--text-secondary);
+      letter-spacing: 0.015em;
+      transition: opacity 0.3s ease;
+    }
+
+    /* Discreet Settings Trigger */
+    .settings-trigger {
+      position: fixed;
+      bottom: max(1rem, env(safe-area-inset-bottom));
+      right: 1rem;
+      z-index: 20;
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      opacity: 0.32;
+      transition: opacity 0.25s ease, transform 0.25s ease, background 0.25s ease;
+    }
+
+    .settings-trigger:hover {
+      opacity: 1;
+      background: rgba(255, 255, 255, 0.09);
+      transform: rotate(30deg);
+    }
+
+    body.pure-mode .settings-trigger {
+      opacity: 0.04;
+    }
+
+    body.pure-mode .settings-trigger:hover {
+      opacity: 0.9;
+    }
+
+    /* Customization Drawer Modal */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      background: rgba(0, 0, 0, 0.72);
+      backdrop-filter: blur(8px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+
+    .modal-backdrop.open {
+      display: flex;
+    }
+
+    .modal-card {
+      width: 100%;
+      max-width: 460px;
+      max-height: 88dvh;
+      overflow-y: auto;
+      background: #121217;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 22px;
+      padding: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.15rem;
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.75);
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .modal-header h2 {
+      font-size: 1.05rem;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .close-btn {
+      background: none;
+      border: none;
+      color: var(--text-secondary);
+      font-size: 1.35rem;
+      cursor: pointer;
+      line-height: 1;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem;
+    }
+
+    label {
+      font-size: 0.74rem;
+      font-weight: 500;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    input[type="text"],
+    input[type="datetime-local"],
+    input[type="date"] {
+      width: 100%;
+      padding: 0.6rem 0.75rem;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: var(--text-primary);
+      font-family: var(--font-sans);
+      font-size: 0.85rem;
+      outline: none;
+    }
+
+    input:focus {
+      border-color: var(--accent-primary);
+    }
+
+    .theme-swatches {
+      display: flex;
+      gap: 0.65rem;
+    }
+
+    .swatch {
+      flex: 1;
+      padding: 0.5rem;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: rgba(255, 255, 255, 0.03);
+      color: var(--text-secondary);
+      font-size: 0.75rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+    }
+
+    .swatch.active {
+      border-color: var(--accent-primary);
+      color: var(--text-primary);
+      background: rgba(255, 255, 255, 0.07);
+    }
+
+    .swatch-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+    }
+
+    .toggle-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.35rem 0;
+    }
+
+    .toggle-row span {
+      font-size: 0.83rem;
+      color: var(--text-primary);
+    }
+
+    .milestone-edit-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .milestone-edit-row {
+      display: grid;
+      grid-template-columns: 1.4fr 1fr;
+      gap: 0.5rem;
+    }
+
+    .btn-primary {
+      padding: 0.7rem 1rem;
+      border-radius: 12px;
+      border: none;
+      background: var(--accent-primary);
+      color: #0B0B0E;
+      font-weight: 600;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: opacity 0.2s ease;
+    }
+
+    .btn-primary:hover {
+      opacity: 0.9;
+    }
+
+    /* Mobile Portrait Optimization (Smartphone Lock Screen) */
+    @media (max-width: 640px) {
+      .wallpaper-canvas {
+        padding-top: 26dvh;
+        justify-content: flex-end;
+        gap: 1.35rem;
+      }
+
+      .timeline-steps {
+        grid-template-columns: 1fr;
+        gap: 0.85rem;
+      }
+
+      .timeline-steps::before {
+        top: 11px;
+        bottom: 11px;
+        left: 11px;
+        right: auto;
+        width: 1.5px;
+        height: auto;
+      }
+
+      .milestone-item {
+        flex-direction: row;
+        text-align: left;
+        align-items: center;
+        gap: 0.85rem;
+      }
+
+      .milestone-node {
+        margin-bottom: 0;
+        flex-shrink: 0;
+      }
+
+      .milestone-info {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        width: 100%;
+        gap: 0.5rem;
+      }
+
+      .milestone-date {
+        margin-top: 0;
+      }
+    }
+  </style>
+</head>
+<body data-theme="cyan">
+  <div class="ambient-glow"></div>
+  <div class="grain-overlay"></div>
+
+  <!-- Optional Top 25% Lock Screen Safe-Zone Preview -->
+  <div class="safe-zone-guide" aria-hidden="true">
+    <div class="mock-date" id="mockDate">Tuesday, May 12</div>
+    <div class="mock-clock" id="mockClock">09:41</div>
+    <div class="mock-badge">Top 25% Lock Screen Clock & Notification Safe Zone</div>
+  </div>
+
+  <main class="wallpaper-canvas">
+    <!-- Degree / Class Eyebrow -->
+    <header class="header-meta">
+      <div class="status-pill">
+        <span class="pulse-dot"></span>
+        <span id="eyebrowBadge">CLASS OF 2027</span>
+      </div>
+      <h1 class="degree-title" id="degreeSubtitle">Bachelor of Computer Applications &bull; Final Semester</h1>
+    </header>
+
+    <!-- Main Countdown + Semester Progress -->
+    <section class="countdown-section" aria-label="Graduation Countdown">
+      <div class="countdown-grid">
+        <div class="time-block">
+          <span class="time-value" id="daysVal">000</span>
+          <span class="time-label">Days</span>
+        </div>
+        <span class="time-divider">:</span>
+        <div class="time-block">
+          <span class="time-value" id="hoursVal">00</span>
+          <span class="time-label">Hours</span>
+        </div>
+        <span class="time-divider">:</span>
+        <div class="time-block">
+          <span class="time-value" id="minutesVal">00</span>
+          <span class="time-label">Minutes</span>
+        </div>
+        <span class="time-divider seconds-divider">:</span>
+        <div class="time-block seconds-block">
+          <span class="time-value" id="secondsVal">00</span>
+          <span class="time-label">Seconds</span>
+        </div>
+      </div>
+
+      <div class="progress-card">
+        <div class="progress-header">
+          <span>Final Semester Progress</span>
+          <span class="progress-percent" id="progressPercent">0.0%</span>
+        </div>
+        <div class="progress-track">
+          <div class="progress-fill" id="progressFill"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4-Stage Milestone Timeline -->
+    <section class="timeline-container" aria-label="Graduation Milestones">
+      <div class="timeline-steps" id="timelineSteps"></div>
+    </section>
+
+    <!-- Motivational Micro-Quote -->
+    <footer class="quote-footer" id="quoteFooter" title="Tap for next quote">
+      <p class="quote-text" id="quoteText">"Almost across the finish line."</p>
+    </footer>
+  </main>
+
+  <!-- Discreet Settings Gear -->
+  <button class="settings-trigger" id="openSettings" aria-label="Customize Countdown" title="Customize Wallpaper">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="3"></circle>
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+    </svg>
+  </button>
+
+  <!-- Settings Modal -->
+  <div class="modal-backdrop" id="settingsModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2>Customize Lock Screen</h2>
+        <button class="close-btn" id="closeSettings" aria-label="Close">&times;</button>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="inputBadge">Badge Text</label>
+          <input type="text" id="inputBadge" />
+        </div>
+        <div class="form-group">
+          <label for="inputSubtitle">Program / Subtitle</label>
+          <input type="text" id="inputSubtitle" />
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="inputSemStart">Semester Start</label>
+          <input type="date" id="inputSemStart" />
+        </div>
+        <div class="form-group">
+          <label for="inputGradDate">Graduation Date & Time</label>
+          <input type="datetime-local" id="inputGradDate" />
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Accent Lighting</label>
+        <div class="theme-swatches" id="themeSwatches">
+          <button type="button" class="swatch" data-theme="cyan"><span class="swatch-dot" style="background:#38BDF8"></span>Cyan</button>
+          <button type="button" class="swatch" data-theme="gold"><span class="swatch-dot" style="background:#FBBF24"></span>Gold</button>
+          <button type="button" class="swatch" data-theme="emerald"><span class="swatch-dot" style="background:#34D399"></span>Emerald</button>
+          <button type="button" class="swatch" data-theme="violet"><span class="swatch-dot" style="background:#A78BFA"></span>Violet</button>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>4 Key Milestones (Tap nodes on screen to toggle done)</label>
+        <div class="milestone-edit-grid" id="milestoneEditGrid"></div>
+      </div>
+
+      <div class="toggle-row">
+        <span>Show Seconds Counter</span>
+        <input type="checkbox" id="toggleSeconds" />
+      </div>
+
+      <div class="toggle-row">
+        <span>Preview Top 25% Lock Screen Clock</span>
+        <input type="checkbox" id="toggleGuide" />
+      </div>
+
+      <div class="toggle-row">
+        <span>Pure Wallpaper Mode (Hide Gear Icon)</span>
+        <input type="checkbox" id="togglePure" />
+      </div>
+
+      <button type="button" class="btn-primary" id="saveSettings">Apply & Save</button>
+    </div>
+  </div>
+
+  <script>
+    const QUOTES = [
+      "Almost across the finish line.",
+      "Every late night is compounding into your future.",
+      "Discipline today, degree tomorrow.",
+      "Stay locked in. The final stretch defines the journey.",
+      "Small daily progress builds monumental outcomes."
+    ];
+
+    const DEFAULT_STATE = {
+      badge: "CLASS OF 2027",
+      subtitle: "Bachelor of Computer Applications • Final Semester",
+      semStart: "2026-11-01",
+      gradDate: "2027-05-15T10:00",
+      theme: "cyan",
+      showSeconds: false,
+      showGuide: false,
+      pureMode: false,
+      quoteIndex: 0,
+      milestones: [
+        { title: "Thesis Draft", date: "2027-02-15", completed: true },
+        { title: "Capstone Demo", date: "2027-03-28", completed: false },
+        { title: "Final Exams", date: "2027-04-24", completed: false },
+        { title: "Graduation Day", date: "2027-05-15", completed: false }
+      ]
+    };
+
+    let state = loadState();
+
+    function loadState() {
+      try {
+        const saved = localStorage.getItem("horizon_grad_wallpaper_v1");
+        return saved ? { ...DEFAULT_STATE, ...JSON.parse(saved) } : { ...DEFAULT_STATE };
+      } catch {
+        return { ...DEFAULT_STATE };
+      }
+    }
+
+    function saveState() {
+      try {
+        localStorage.setItem("horizon_grad_wallpaper_v1", JSON.stringify(state));
+      } catch (e) {
+        console.warn("LocalStorage unavailable:", e);
+      }
+    }
+
+    function formatShortDate(dateStr) {
+      if (!dateStr) return "";
+      const d = new Date(dateStr + "T00:00:00");
+      return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    }
+
+    function renderMilestones() {
+      const container = document.getElementById("timelineSteps");
+      container.innerHTML = "";
+      let foundActive = false;
+
+      state.milestones.forEach((m, idx) => {
+        const item = document.createElement("div");
+        item.className = "milestone-item";
+        if (m.completed) {
+          item.classList.add("completed");
+        } else if (!foundActive) {
+          item.classList.add("active");
+          foundActive = true;
+        }
+
+        item.innerHTML = `
+          <div class="milestone-node"></div>
+          <div class="milestone-info">
+            <div class="milestone-title">${m.title}</div>
+            <div class="milestone-date">${formatShortDate(m.date)}</div>
+          </div>
+        `;
+
+        item.addEventListener("click", () => {
+          state.milestones[idx].completed = !state.milestones[idx].completed;
+          saveState();
+          renderMilestones();
+        });
+
+        container.appendChild(item);
+      });
+    }
+
+    function applyVisualPreferences() {
+      document.body.setAttribute("data-theme", state.theme);
+      document.body.classList.toggle("show-seconds", !!state.showSeconds);
+      document.body.classList.toggle("show-guide", !!state.showGuide);
+      document.body.classList.toggle("pure-mode", !!state.pureMode);
+
+      document.getElementById("eyebrowBadge").textContent = state.badge;
+      document.getElementById("degreeSubtitle").textContent = state.subtitle;
+      document.getElementById("quoteText").textContent = `"${QUOTES[state.quoteIndex % QUOTES.length]}"`;
+    }
+
+    function updateCountdown() {
+      const now = new Date();
+      const target = new Date(state.gradDate);
+      const start = new Date(state.semStart + "T00:00:00");
+
+      const diff = Math.max(0, target - now);
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+      const minutes = Math.floor((diff / (1000 * 60)) % 60);
+      const seconds = Math.floor((diff / 1000) % 60);
+
+      document.getElementById("daysVal").textContent = String(days).padStart(2, "0");
+      document.getElementById("hoursVal").textContent = String(hours).padStart(2, "0");
+      document.getElementById("minutesVal").textContent = String(minutes).padStart(2, "0");
+      document.getElementById("secondsVal").textContent = String(seconds).padStart(2, "0");
+
+      // Semester Percentage Calculation
+      const totalSpan = Math.max(1, target - start);
+      const elapsed = Math.min(Math.max(0, now - start), totalSpan);
+      const pct = ((elapsed / totalSpan) * 100).toFixed(1);
+
+      document.getElementById("progressPercent").textContent = `${pct}%`;
+      document.getElementById("progressFill").style.width = `${pct}%`;
+
+      // Update mock lock screen clock if guide is visible
+      if (state.showGuide) {
+        document.getElementById("mockClock").textContent = now.toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: false
+        });
+        document.getElementById("mockDate").textContent = now.toLocaleDateString("en-US", {
+          weekday: "long",
+          month: "long",
+          day: "numeric"
+        });
+      }
+    }
+
+    // Modal & Form Controls
+    const modal = document.getElementById("settingsModal");
+    document.getElementById("openSettings").addEventListener("click", () => {
+      document.getElementById("inputBadge").value = state.badge;
+      document.getElementById("inputSubtitle").value = state.subtitle;
+      document.getElementById("inputSemStart").value = state.semStart;
+      document.getElementById("inputGradDate").value = state.gradDate;
+      document.getElementById("toggleSeconds").checked = state.showSeconds;
+      document.getElementById("toggleGuide").checked = state.showGuide;
+      document.getElementById("togglePure").checked = state.pureMode;
+
+      document.querySelectorAll(".swatch").forEach(btn => {
+        btn.classList.toggle("active", btn.dataset.theme === state.theme);
+      });
+
+      const editGrid = document.getElementById("milestoneEditGrid");
+      editGrid.innerHTML = "";
+      state.milestones.forEach((m, i) => {
+        const row = document.createElement("div");
+        row.className = "milestone-edit-row";
+        row.innerHTML = `
+          <input type="text" id="mTitle_${i}" value="${m.title}" placeholder="Milestone ${i + 1}" />
+          <input type="date" id="mDate_${i}" value="${m.date}" />
+        `;
+        editGrid.appendChild(row);
+      });
+
+      modal.classList.add("open");
+    });
+
+    document.getElementById("closeSettings").addEventListener("click", () => {
+      modal.classList.remove("open");
+    });
+
+    modal.addEventListener("click", (e) => {
+      if (e.target === modal) modal.classList.remove("open");
+    });
+
+    document.querySelectorAll(".swatch").forEach(btn => {
+      btn.addEventListener("click", () => {
+        document.querySelectorAll(".swatch").forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+      });
+    });
+
+    document.getElementById("saveSettings").addEventListener("click", () => {
+      state.badge = document.getElementById("inputBadge").value.trim() || DEFAULT_STATE.badge;
+      state.subtitle = document.getElementById("inputSubtitle").value.trim() || DEFAULT_STATE.subtitle;
+      state.semStart = document.getElementById("inputSemStart").value || DEFAULT_STATE.semStart;
+      state.gradDate = document.getElementById("inputGradDate").value || DEFAULT_STATE.gradDate;
+      state.showSeconds = document.getElementById("toggleSeconds").checked;
+      state.showGuide = document.getElementById("toggleGuide").checked;
+      state.pureMode = document.getElementById("togglePure").checked;
+
+      const activeSwatch = document.querySelector(".swatch.active");
+      if (activeSwatch) state.theme = activeSwatch.dataset.theme;
+
+      state.milestones = state.milestones.map((m, i) => ({
+        ...m,
+        title: document.getElementById(`mTitle_${i}`).value.trim() || m.title,
+        date: document.getElementById(`mDate_${i}`).value || m.date
+      }));
+
+      saveState();
+      applyVisualPreferences();
+      renderMilestones();
+      updateCountdown();
+      modal.classList.remove("open");
+    });
+
+    document.getElementById("quoteFooter").addEventListener("click", () => {
+      state.quoteIndex = (state.quoteIndex + 1) % QUOTES.length;
+      saveState();
+      applyVisualPreferences();
+    });
+
+    // Initialize
+    applyVisualPreferences();
+    renderMilestones();
+    updateCountdown();
+    setInterval(updateCountdown, 1000);
+  </script>
+</body>
+</html>
